@@ -268,6 +268,18 @@ class ParticleFilter(InferenceModule):
         weight with each position) is incorrect and may produce errors.
         """
         "*** YOUR CODE HERE ***"
+        self.part_list = []
+        num_pos = len(self.legalPositions)
+        num_part = self.numParticles
+        if False: # Debug if needed
+            print 'num_pos: ',num_pos
+            print 'num_part: ',num_part
+        for part in xrange(num_part):
+            ind = part % num_pos # Increments index by one through the numper of legalPositions
+            self.part_list.append(self.legalPositions[ind])
+        if False:
+            print self.part_list
+
         # self.particles = [random.choice(self.legalPositions) for i in range(self.numParticles)]
 
     def observe(self, observation, gameState):
@@ -301,7 +313,27 @@ class ParticleFilter(InferenceModule):
         emissionModel = busters.getObservationDistribution(noisyDistance)
         pacmanPosition = gameState.getPacmanPosition()
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        #util.raiseNotDefined()
+        if noisyDistance == None:
+            self.part_list = []
+            for part in xrange(self.numParticles):
+                self.part_list.append(self.getJailPosition())
+        else:
+            weights = util.Counter()
+            positive_flag = False
+            for particle in self.part_list:
+                maze_dist = util.manhattanDistance(particle, pacmanPosition)
+                weight = emissionModel[maze_dist]
+                weights[particle] += weight
+                if weight > 0:
+                    positive_flag = True
+
+            if positive_flag:
+                self.part_list = []
+                for i in range(self.numParticles):
+                    self.part_list.append(util.sample(weights))
+            else:
+                self.initializeUniformly(gameState)
 
     def elapseTime(self, gameState):
         """
@@ -318,7 +350,12 @@ class ParticleFilter(InferenceModule):
         a belief distribution.
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        part_list2 = []
+        for particle in self.part_list:
+            dist_to_ghost = self.getPositionDistribution(self.setGhostPosition(gameState, particle))
+            part_list2.append(util.sample(dist_to_ghost)) # Generate sample from belief distribution
+        self.part_list = part_list2 # Replace position list with new positions
+
 
     def getBeliefDistribution(self):
         """
@@ -328,7 +365,12 @@ class ParticleFilter(InferenceModule):
         Counter object)
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        #util.raiseNotDefined()
+        beliefDist = util.Counter()
+        step = 1.0 / self.numParticles
+        for particle in self.part_list:
+            beliefDist[particle] += step
+        return beliefDist
 
 class MarginalInference(InferenceModule):
     """
